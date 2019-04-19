@@ -30,6 +30,7 @@ import org.springframework.cloud.alibaba.nacos.discovery.NacosDiscoveryClientAut
 import org.springframework.cloud.alibaba.nacos.registry.NacosAutoServiceRegistration;
 import org.springframework.cloud.alibaba.nacos.registry.NacosRegistration;
 import org.springframework.cloud.alibaba.nacos.registry.NacosServiceRegistry;
+import org.springframework.cloud.client.serviceregistry.AutoServiceRegistrationAutoConfiguration;
 import org.springframework.cloud.client.serviceregistry.AutoServiceRegistrationConfiguration;
 import org.springframework.cloud.client.serviceregistry.AutoServiceRegistrationProperties;
 import org.springframework.context.ApplicationContext;
@@ -45,15 +46,9 @@ import org.springframework.context.annotation.Configuration;
 @ConditionalOnNacosDiscoveryEnabled
 @ConditionalOnClass(name = "org.springframework.boot.context.embedded.EmbeddedServletContainerInitializedEvent")
 @ConditionalOnProperty(value = "spring.cloud.service-registry.auto-registration.enabled", matchIfMissing = true)
-@AutoConfigureBefore(NacosDiscoveryClientAutoConfiguration.class)
-@AutoConfigureAfter(AutoServiceRegistrationConfiguration.class)
+@AutoConfigureAfter({ AutoServiceRegistrationConfiguration.class,
+		AutoServiceRegistrationAutoConfiguration.class })
 public class NacosDiscoveryAutoConfiguration {
-
-	@Bean
-	@ConditionalOnMissingBean
-	public NacosDiscoveryProperties nacosProperties() {
-		return new NacosDiscoveryProperties();
-	}
 
 	@Bean
 	public NacosServiceRegistry nacosServiceRegistry(
@@ -78,31 +73,4 @@ public class NacosDiscoveryAutoConfiguration {
 		return new NacosAutoServiceRegistration(registry,
 				autoServiceRegistrationProperties, registration);
 	}
-
-	@Bean
-	@ConditionalOnBean(NacosAutoServiceRegistration.class) // NacosAutoServiceRegistration
-															// should be present
-	@ConditionalOnNotWebApplication // Not Web Application
-	public ApplicationRunner applicationRunner(
-			final NacosAutoServiceRegistration nacosAutoServiceRegistration) {
-
-		return new ApplicationRunner() {
-			@Override
-			public void run(ApplicationArguments args) throws Exception {
-				if (!nacosAutoServiceRegistration.isRunning()) { // If it's not running,
-																	// let
-					// it start.
-					// FIXME: Please make sure "spring.cloud.nacos.discovery.port" must be
-					// configured on an available port,
-					// or the startup or Nacos health check will be failed.
-					nacosAutoServiceRegistration.start();
-					// NacosAutoServiceRegistration will be stopped after its destroy()
-					// method
-					// is invoked.
-					// @PreDestroy destroy() -> stop()
-				}
-			}
-		};
-	}
-
 }
